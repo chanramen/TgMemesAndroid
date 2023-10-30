@@ -74,7 +74,7 @@ dependencies {
     ksp(libs.room.compiler)
     implementation(libs.work.ktx)
     implementation(libs.timber)
-    implementation("com.google.code.findbugs:jsr305:3.0.2")
+    implementation(libs.findbugs)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)
