@@ -1,16 +1,24 @@
 package ru.chanramen.tgmemes
 
 import android.app.Application
+import androidx.hilt.work.HiltWorkerFactory
 import androidx.room.Room
+import androidx.work.Configuration
+import dagger.hilt.android.HiltAndroidApp
 import ru.chanramen.tgmemes.data.AppDatabase
 import timber.log.Timber
+import javax.inject.Inject
 
-class TgMemesApp : Application() {
-    // TODO: use proper di stuff
-    val database by lazy {
-        Room.databaseBuilder(this, AppDatabase::class.java, "app-database")
+@HiltAndroidApp
+class TgMemesApp : Application(), Configuration.Provider {
+
+    @Inject
+    lateinit var workerFactory: HiltWorkerFactory
+
+    override fun getWorkManagerConfiguration() =
+        Configuration.Builder()
+            .setWorkerFactory(workerFactory)
             .build()
-    }
 
     override fun onCreate() {
         super.onCreate()

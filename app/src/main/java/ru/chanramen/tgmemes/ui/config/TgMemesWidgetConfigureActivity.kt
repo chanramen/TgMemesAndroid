@@ -36,23 +36,27 @@ import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.lifecycle.lifecycleScope
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import ru.chanramen.tgmemes.TgMemesApp
 import ru.chanramen.tgmemes.data.settings.SettingsRepository
 import ru.chanramen.tgmemes.data.settings.UserSettings
 import ru.chanramen.tgmemes.data.settings.orDefault
 import ru.chanramen.tgmemes.data.widget.toWidgetPrefs
 import ru.chanramen.tgmemes.data.worker.enqueuePeriodicallyFor
 import ru.chanramen.tgmemes.domain.ChannelName
-import ru.chanramen.tgmemes.domain.toChannelName
 import ru.chanramen.tgmemes.ui.theme.TgMemesTheme
+import javax.inject.Inject
 
 
+@AndroidEntryPoint
 class TgMemesWidgetConfigureActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var settingsRepository: SettingsRepository
 
     @OptIn(ExperimentalMaterial3Api::class)
     public override fun onCreate(icicle: Bundle?) {
@@ -73,8 +77,6 @@ class TgMemesWidgetConfigureActivity : ComponentActivity() {
         }
 
         val stateFlow = MutableStateFlow<State>(State.Loading)
-        val settingsRepository =
-            SettingsRepository((application as TgMemesApp).database.userSettingsDao())
         lifecycleScope.launch {
             val widgetPrefs = getAppWidgetState(
                 this@TgMemesWidgetConfigureActivity,

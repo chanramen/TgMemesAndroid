@@ -6,6 +6,7 @@ import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.state.PreferencesGlanceStateDefinition
+import androidx.hilt.work.HiltWorker
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.Data
@@ -16,12 +17,8 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.logging.ANDROID
-import io.ktor.client.plugins.logging.Logger
-import io.ktor.client.plugins.logging.Logging
-import ru.chanramen.tgmemes.TgMemesApp
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
 import ru.chanramen.tgmemes.TgMemesWidget
 import ru.chanramen.tgmemes.data.memes.MemeInfoResult
 import ru.chanramen.tgmemes.data.memes.MemesRepository
@@ -29,23 +26,20 @@ import ru.chanramen.tgmemes.data.settings.SettingsRepository
 import ru.chanramen.tgmemes.data.settings.UserSettings
 import ru.chanramen.tgmemes.data.widget.toWidgetPrefs
 import timber.log.Timber
-import java.time.Duration
 import java.util.concurrent.TimeUnit
 
-class MemeWorker(context: Context, workerParameters: WorkerParameters) :
-    CoroutineWorker(context, workerParameters) {
+@HiltWorker
+class MemeWorker @AssistedInject constructor(
+    @Assisted context: Context,
+    @Assisted workerParameters: WorkerParameters,
+    private val settingsRepository: SettingsRepository,
+    private val memesRepository: MemesRepository,
+) : CoroutineWorker(context, workerParameters) {
 
     override suspend fun doWork(): Result {
         val params = inputData.parse()
         Timber.d("starting worker with params $params")
         if (params.id <= 0) return Result.failure()
-
-        val settingsRepository = SettingsRepository(app.database.userSettingsDao())
-        val memesRepository = MemesRepository(HttpClient(CIO) {
-            install(Logging) {
-                logger = Logger.ANDROID
-            }
-        })
 
         val userSettings =
             settingsRepository.getSettingsById(params.id)
@@ -100,9 +94,6 @@ class MemeWorker(context: Context, workerParameters: WorkerParameters) :
             FORCE_REFRESH_KEY to forceRefresh,
         )
     }
-
-    private inline val app
-        get() = this.applicationContext as TgMemesApp
 }
 
 fun Context.enqueuePeriodicallyFor(userSettings: UserSettings, withForceUpdate: Boolean = false) {

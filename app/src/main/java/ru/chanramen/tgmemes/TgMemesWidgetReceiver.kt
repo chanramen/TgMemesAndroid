@@ -25,26 +25,37 @@ import androidx.glance.layout.Box
 import androidx.glance.layout.ContentScale
 import androidx.glance.layout.fillMaxSize
 import androidx.work.WorkManager
+import dagger.hilt.android.AndroidEntryPoint
 import ru.chanramen.tgmemes.data.settings.SettingsRepository
 import ru.chanramen.tgmemes.data.settings.UserSettings
 import ru.chanramen.tgmemes.data.widget.toWidgetPrefs
 import ru.chanramen.tgmemes.data.worker.enqueuePeriodicallyFor
 import timber.log.Timber
+import javax.inject.Inject
 
 /**
  * Implementation of App Widget functionality.
  * App Widget Configuration implemented in [TgMemesWidgetConfigureActivity]
  */
+@AndroidEntryPoint
 class TgMemesWidgetReceiver : GlanceAppWidgetReceiver() {
 
-    override val glanceAppWidget = TgMemesWidget()
+    @Inject
+    lateinit var settingsRepository: SettingsRepository
+
+    override val glanceAppWidget = TgMemesWidget().apply {
+        settingsRepositoryProvider = { settingsRepository }
+    }
 }
 
 class TgMemesWidget : GlanceAppWidget() {
 
+    lateinit var settingsRepositoryProvider: () -> SettingsRepository
+    private val settingsRepository by lazy {
+        settingsRepositoryProvider()
+    }
+
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-
-
         provideContent {
             val prefs = currentState<Preferences>().toWidgetPrefs()
             val settingsId = prefs.getId() ?: 0
@@ -70,8 +81,6 @@ class TgMemesWidget : GlanceAppWidget() {
             if (state is WidgetState.NotConfigured) {
                 LaunchedEffect(key1 = state) {
                     Timber.i("widget $id: not configured")
-                    val settingsRepository =
-                        SettingsRepository((context.applicationContext as TgMemesApp).database.userSettingsDao())
                     settingsRepository.saveSettings(UserSettings.default())
                         ?.let { userSettings ->
                             updateAppWidgetState(context, id) {
@@ -83,8 +92,6 @@ class TgMemesWidget : GlanceAppWidget() {
             } else if (state is WidgetState.NoImage) {
                 LaunchedEffect(key1 = state) {
                     Timber.i("widget $id: no image, settingsId=$settingsId")
-                    val settingsRepository =
-                        SettingsRepository((context.applicationContext as TgMemesApp).database.userSettingsDao())
                     settingsRepository.getSettingsById(settingsId)
                         ?.let { context.enqueuePeriodicallyFor(it, true) }
                 }
