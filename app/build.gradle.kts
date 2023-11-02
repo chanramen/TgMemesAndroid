@@ -21,6 +21,9 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        buildConfigField("long", "DEFAULT_UPDATE_TIME", "900")
+        buildConfigField("String", "DEFAULT_CHANNEL_NAME", "\"fucking_memes\"")
     }
 
     buildTypes {

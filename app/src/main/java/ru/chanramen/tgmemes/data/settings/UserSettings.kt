@@ -1,5 +1,6 @@
 package ru.chanramen.tgmemes.data.settings
 
+import ru.chanramen.tgmemes.BuildConfig
 import ru.chanramen.tgmemes.domain.ChannelName
 
 data class UserSettings(
@@ -10,8 +11,8 @@ data class UserSettings(
 ) {
     companion object {
         fun default() = UserSettings(
-            ChannelName("fucking_memes"),
-            900,
+            ChannelName(BuildConfig.DEFAULT_CHANNEL_NAME),
+            BuildConfig.DEFAULT_UPDATE_TIME,
         )
     }
 }
