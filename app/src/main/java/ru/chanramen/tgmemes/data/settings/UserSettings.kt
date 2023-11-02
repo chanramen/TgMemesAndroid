@@ -11,7 +11,7 @@ data class UserSettings(
     companion object {
         fun default() = UserSettings(
             ChannelName("fucking_memes"),
-            3600,
+            900,
         )
     }
 }

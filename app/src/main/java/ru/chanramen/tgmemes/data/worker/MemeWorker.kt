@@ -47,7 +47,10 @@ class MemeWorker @AssistedInject constructor(
                 ?: return Result.retry()
         // TODO: handle time and timezone changes
         val currentTimeSeconds = System.currentTimeMillis() / 1000L
-        if (userSettings.lastUpdateTime + userSettings.updatePeriod < currentTimeSeconds && !params.forceRefresh) {
+        val flexInterval = userSettings.flexInterval
+        val desiredUpdateTime = userSettings.lastUpdateTime + userSettings.updatePeriod
+        if ((currentTimeSeconds <= (desiredUpdateTime - flexInterval)) && !params.forceRefresh) {
+            Timber.d("skipping update, time=$currentTimeSeconds last=${userSettings.lastUpdateTime} desired=$desiredUpdateTime flex=$flexInterval")
             return Result.success()
         }
         val meme = memesRepository.loadLastMeme(userSettings.publicName)
@@ -101,6 +104,7 @@ fun Context.enqueuePeriodicallyFor(userSettings: UserSettings, withForceUpdate: 
     if (withForceUpdate) {
         val request = OneTimeWorkRequestBuilder<MemeWorker>()
             .setInputData(MemeWorker.Params(userSettings.id, true).toData())
+            .addTag("one_time_update_${userSettings.id}")
             .build()
         workManager.enqueue(request)
     }
@@ -108,11 +112,12 @@ fun Context.enqueuePeriodicallyFor(userSettings: UserSettings, withForceUpdate: 
         PeriodicWorkRequestBuilder<MemeWorker>(
             userSettings.updatePeriod,
             TimeUnit.SECONDS,
-            userSettings.updatePeriod / 10L,
+            userSettings.flexInterval,
             TimeUnit.SECONDS,
         )
             .setInputData(MemeWorker.Params(userSettings.id, false).toData())
-            .setConstraints(Constraints(NetworkType.UNMETERED))
+            .setConstraints(Constraints(NetworkType.CONNECTED))
+            .addTag("periodic_update_${userSettings.id}")
             .build()
     workManager.enqueueUniquePeriodicWork(
         "MEME_WORK_${userSettings.id}",
@@ -120,3 +125,6 @@ fun Context.enqueuePeriodicallyFor(userSettings: UserSettings, withForceUpdate: 
         request
     )
 }
+
+private val UserSettings.flexInterval
+    get() = updatePeriod / 10L
