@@ -24,6 +24,9 @@ import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.ContentScale
 import androidx.glance.layout.fillMaxSize
+import androidx.glance.text.Text
+import androidx.glance.text.TextStyle
+import androidx.glance.unit.ColorProvider
 import androidx.work.WorkManager
 import dagger.hilt.android.AndroidEntryPoint
 import ru.chanramen.tgmemes.data.settings.SettingsRepository
@@ -115,6 +118,9 @@ class TgMemesWidget : GlanceAppWidget() {
                     } else {
                         CircularProgressIndicator()
                     }
+                }
+                if (BuildConfig.DEBUG) {
+                    Text(text = "Debug", style = TextStyle(color = ColorProvider(Color.Red)))
                 }
             }
         }
