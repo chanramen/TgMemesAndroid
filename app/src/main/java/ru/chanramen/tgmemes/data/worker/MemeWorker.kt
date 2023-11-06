@@ -20,6 +20,8 @@ import androidx.work.workDataOf
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import ru.chanramen.tgmemes.TgMemesWidget
+import ru.chanramen.tgmemes.analytics.api.Analytics
+import ru.chanramen.tgmemes.analytics.api.WorkAnalytics
 import ru.chanramen.tgmemes.data.memes.MemeInfoResult
 import ru.chanramen.tgmemes.data.memes.MemesRepository
 import ru.chanramen.tgmemes.data.settings.SettingsRepository
@@ -34,28 +36,57 @@ class MemeWorker @AssistedInject constructor(
     @Assisted workerParameters: WorkerParameters,
     private val settingsRepository: SettingsRepository,
     private val memesRepository: MemesRepository,
+    private val analytics: Analytics,
 ) : CoroutineWorker(context, workerParameters) {
 
     override suspend fun doWork(): Result {
         val params = inputData.parse()
         Timber.d("starting worker with params $params")
-        if (params.id <= 0) return Result.failure()
+        if (params.id <= 0) return Result.failure().also {
+            analytics.trackWorkStatus(
+                WorkAnalytics.WorkResult.FAILURE,
+                params.forceRefresh,
+                info = WorkAnalytics.ResultInfo.INVALID_ID,
+            )
+        }
 
         val userSettings =
             settingsRepository.getSettingsById(params.id)
                 .also { Timber.d("got user settings $it") }
                 ?: return Result.retry()
+                    .also {
+                        analytics.trackWorkStatus(
+                            WorkAnalytics.WorkResult.RETRY,
+                            params.forceRefresh,
+                            info = WorkAnalytics.ResultInfo.SETTINGS_NOT_FOUND,
+                        )
+                    }
         // TODO: handle time and timezone changes
         val currentTimeSeconds = System.currentTimeMillis() / 1000L
         val flexInterval = userSettings.flexInterval
         val desiredUpdateTime = userSettings.lastUpdateTime + userSettings.updatePeriod
         if ((currentTimeSeconds <= (desiredUpdateTime - flexInterval)) && !params.forceRefresh) {
             Timber.d("skipping update, time=$currentTimeSeconds last=${userSettings.lastUpdateTime} desired=$desiredUpdateTime flex=$flexInterval")
+            analytics.trackWorkStatus(
+                WorkAnalytics.WorkResult.SUCCESS,
+                params.forceRefresh,
+                userSettings.publicName.name,
+                userSettings.updatePeriod,
+                WorkAnalytics.ResultInfo.UPDATE_NOT_NEEDED,
+            )
             return Result.success()
         }
         val meme = memesRepository.loadLastMeme(userSettings.publicName)
         Timber.d("got meme $meme")
-        if (meme !is MemeInfoResult.Success) return Result.retry()
+        if (meme !is MemeInfoResult.Success) return Result.retry().also {
+            analytics.trackWorkStatus(
+                WorkAnalytics.WorkResult.RETRY,
+                params.forceRefresh,
+                userSettings.publicName.name,
+                userSettings.updatePeriod,
+                WorkAnalytics.ResultInfo.MEME_GET_FAILURE,
+            )
+        }
 
         val glanceAppWidgetManager = GlanceAppWidgetManager(applicationContext)
         val widgetId = glanceAppWidgetManager.getGlanceIds(TgMemesWidget::class.java).find {
@@ -68,6 +99,13 @@ class MemeWorker @AssistedInject constructor(
         } ?: return Result.failure().also {
             Timber.i("cannot find widget id for settings, deleting $userSettings")
             settingsRepository.deleteSettings(userSettings)
+            analytics.trackWorkStatus(
+                WorkAnalytics.WorkResult.FAILURE,
+                params.forceRefresh,
+                userSettings.publicName.name,
+                userSettings.updatePeriod,
+                WorkAnalytics.ResultInfo.SETTINGS_NOT_FOUND,
+            )
         }
 
         updateAppWidgetState(applicationContext, widgetId) {
@@ -76,6 +114,13 @@ class MemeWorker @AssistedInject constructor(
         }
         TgMemesWidget().update(applicationContext, widgetId)
         settingsRepository.updateSettings(userSettings.copy(lastUpdateTime = currentTimeSeconds))
+        analytics.trackWorkStatus(
+            WorkAnalytics.WorkResult.SUCCESS,
+            params.forceRefresh,
+            userSettings.publicName.name,
+            userSettings.updatePeriod,
+            WorkAnalytics.ResultInfo.OK,
+        )
         return Result.success()
     }
 
@@ -124,6 +169,12 @@ fun Context.enqueuePeriodicallyFor(userSettings: UserSettings, withForceUpdate: 
         ExistingPeriodicWorkPolicy.UPDATE,
         request
     )
+}
+
+fun Context.stopAllWorkForId(id: Long) {
+    val workManager = WorkManager.getInstance(this)
+    workManager.cancelUniqueWork("MEME_WORK_$id")
+    workManager.cancelAllWorkByTag("one_time_update_$id")
 }
 
 private val UserSettings.flexInterval

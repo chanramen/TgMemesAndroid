@@ -15,3 +15,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "TgMemes"
 include(":app")
+include(":analytics")
+include(":analytics:api")
+include(":analytics:firebase-impl")

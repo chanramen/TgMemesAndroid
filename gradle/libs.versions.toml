@@ -1,5 +1,5 @@
 [versions]
-agp = "8.3.0-alpha11"
+agp = "8.3.0-alpha12"
 kotlin = "1.9.10"
 ksp = "1.9.10-1.0.13"
 core-ktx = "1.12.0"
@@ -19,6 +19,9 @@ timber = "5.0.1"
 findbugs = "3.0.2"
 dagger = "2.48.1"
 hilt-androidx = "1.1.0-rc01"
+gms-plugin = "4.4.0"
+firebase-bom = "32.5.0"
+crashlytics-plugin = "2.9.9"
 
 [libraries]
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
@@ -52,6 +55,9 @@ dagger-hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", ve
 dagger-hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "dagger" }
 dagger-hilt-androidx-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "hilt-androidx" }
 dagger-hilt-androidx-compiler = { group = "androidx.hilt", name = "hilt-compiler", version.ref = "hilt-androidx" }
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebase-bom" }
+firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
+firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics" }
 
 
 [plugins]
@@ -59,4 +65,7 @@ androidApplication = { id = "com.android.application", version.ref = "agp" }
 kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "dagger" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+gms = { id = "com.google.gms.google-services", version.ref = "gms-plugin" }
+crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "crashlytics-plugin" }
+androidLibrary = { id = "com.android.library", version.ref = "agp" }
 

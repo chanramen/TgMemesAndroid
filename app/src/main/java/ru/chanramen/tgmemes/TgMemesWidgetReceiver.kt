@@ -24,15 +24,17 @@ import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.ContentScale
 import androidx.glance.layout.fillMaxSize
+import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
-import androidx.work.WorkManager
 import dagger.hilt.android.AndroidEntryPoint
+import ru.chanramen.tgmemes.analytics.api.Analytics
 import ru.chanramen.tgmemes.data.settings.SettingsRepository
 import ru.chanramen.tgmemes.data.settings.UserSettings
 import ru.chanramen.tgmemes.data.widget.toWidgetPrefs
 import ru.chanramen.tgmemes.data.worker.enqueuePeriodicallyFor
+import ru.chanramen.tgmemes.data.worker.stopAllWorkForId
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -45,17 +47,34 @@ class TgMemesWidgetReceiver : GlanceAppWidgetReceiver() {
 
     @Inject
     lateinit var settingsRepository: SettingsRepository
+    @Inject
+    lateinit var analytics: Analytics
 
     override val glanceAppWidget = TgMemesWidget().apply {
         settingsRepositoryProvider = { settingsRepository }
+        analyticsInitializer = { analytics }
     }
 }
 
 class TgMemesWidget : GlanceAppWidget() {
 
     lateinit var settingsRepositoryProvider: () -> SettingsRepository
-    private val settingsRepository by lazy {
+    lateinit var analyticsInitializer: () -> Analytics
+    private val settingsRepository by lazy(LazyThreadSafetyMode.NONE) {
         settingsRepositoryProvider()
+    }
+    private val analytics: Analytics by lazy(LazyThreadSafetyMode.NONE) {
+        analyticsInitializer()
+    }
+
+    override suspend fun onDelete(context: Context, glanceId: GlanceId) {
+        super.onDelete(context, glanceId)
+        val prefs = getAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId).toWidgetPrefs()
+        val id = prefs.getId() ?: return
+        val userSettings = settingsRepository.getSettingsById(id)
+        context.stopAllWorkForId(id)
+        userSettings?.let { settingsRepository.deleteSettings(it) }
+        analytics.widgetDeleted(id, userSettings?.publicName?.name ?: "")
     }
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -81,26 +100,33 @@ class TgMemesWidget : GlanceAppWidget() {
                 }
             }
 
-            if (state is WidgetState.NotConfigured) {
-                LaunchedEffect(key1 = state) {
-                    Timber.i("widget $id: not configured")
-                    settingsRepository.saveSettings(UserSettings.default())
-                        ?.let { userSettings ->
-                            updateAppWidgetState(context, id) {
-                                it.toWidgetPrefs().setId(userSettings.id)
+            when (state) {
+                is WidgetState.NotConfigured -> {
+                    LaunchedEffect(key1 = state) {
+                        Timber.i("widget $id: not configured")
+                        settingsRepository.saveSettings(UserSettings.default())
+                            ?.let { userSettings ->
+                                updateAppWidgetState(context, id) {
+                                    it.toWidgetPrefs().setId(userSettings.id)
+                                }
+                                context.enqueuePeriodicallyFor(userSettings, true)
+                                analytics.widgetCreated(userSettings.id)
                             }
-                            context.enqueuePeriodicallyFor(userSettings, true)
-                        }
+                    }
                 }
-            } else if (state is WidgetState.NoImage) {
-                LaunchedEffect(key1 = state) {
-                    Timber.i("widget $id: no image, settingsId=$settingsId")
-                    settingsRepository.getSettingsById(settingsId)
-                        ?.let { context.enqueuePeriodicallyFor(it, true) }
+
+                is WidgetState.NoImage -> {
+                    LaunchedEffect(key1 = state) {
+                        Timber.i("widget $id: no image, settingsId=$settingsId")
+                        settingsRepository.getSettingsById(settingsId)
+                            ?.let { context.enqueuePeriodicallyFor(it, true) }
+                    }
                 }
-            } else if (state is WidgetState.Data) {
-                LaunchedEffect(key1 = state) {
-                    Timber.d("start drawing for widget with settingsId=$settingsId")
+
+                is WidgetState.Data -> {
+                    LaunchedEffect(key1 = state) {
+                        Timber.d("start drawing for widget with settingsId=$settingsId")
+                    }
                 }
             }
 

@@ -4,6 +4,8 @@ plugins {
     alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.gms)
+    alias(libs.plugins.crashlytics)
 }
 
 android {
@@ -32,7 +34,8 @@ android {
         }
         release {
             isMinifyEnabled = true
-            isShrinkResources = true
+            // disabled until crashlytics build fixed
+            isShrinkResources = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -84,8 +87,14 @@ dependencies {
     implementation(libs.findbugs)
     implementation(libs.dagger.hilt.android)
     implementation(libs.dagger.hilt.androidx.work)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.crashlytics)
     ksp(libs.dagger.hilt.androidx.compiler)
     ksp(libs.dagger.hilt.compiler)
+
+    implementation(project(":analytics:api"))
+    implementation(project(":analytics:firebase-impl"))
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)
