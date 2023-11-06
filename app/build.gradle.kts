@@ -95,6 +95,7 @@ dependencies {
 
     implementation(project(":analytics:api"))
     implementation(project(":analytics:firebase-impl"))
+    implementation(project(":analytics:appmetrica-impl"))
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)
