@@ -5,7 +5,7 @@ import ru.chanramen.tgmemes.analytics.api.WidgetAnalytics
 
 class WidgetAnalyticsImpl : WidgetAnalytics {
     override fun widgetCreated(id: Long) {
-        AppMetrica.reportEvent("widgetCreated", mapOf("widget_id" to id))
+        AppMetrica.reportEvent("widget_created", mapOf("widget_id" to id))
     }
 
     override fun widgetSettingsChanged(
