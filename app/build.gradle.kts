@@ -90,6 +90,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.crashlytics)
+    implementation(libs.blur)
     ksp(libs.dagger.hilt.androidx.compiler)
     ksp(libs.dagger.hilt.compiler)
 

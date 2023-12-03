@@ -5,6 +5,10 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.datastore.preferences.core.Preferences
 import androidx.glance.GlanceId
@@ -15,6 +19,8 @@ import androidx.glance.ImageProvider
 import androidx.glance.appwidget.CircularProgressIndicator
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.SizeMode
+import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.appwidget.state.updateAppWidgetState
@@ -28,7 +34,10 @@ import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import com.hoko.blur.HokoBlur
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import ru.chanramen.tgmemes.analytics.api.Analytics
 import ru.chanramen.tgmemes.data.settings.SettingsRepository
 import ru.chanramen.tgmemes.data.settings.UserSettings
@@ -57,6 +66,8 @@ class TgMemesWidgetReceiver : GlanceAppWidgetReceiver() {
 }
 
 class TgMemesWidget : GlanceAppWidget() {
+
+    override val sizeMode: SizeMode = SizeMode.Exact
 
     lateinit var settingsRepositoryProvider: () -> SettingsRepository
     lateinit var analyticsInitializer: () -> Analytics
@@ -136,10 +147,23 @@ class TgMemesWidget : GlanceAppWidget() {
                     contentAlignment = Alignment.Center
                 ) {
                     if (state is WidgetState.Data) {
+                        var blurredImageState by remember { mutableStateOf(state.image) }
+                        LaunchedEffect(state.image) {
+                            withContext(Dispatchers.Default) {
+                                blurredImageState = blurImage(context, state.image)
+                            }
+                        }
+                        Image(
+                            provider = ImageProvider(blurredImageState),
+                            contentDescription = null,
+                            contentScale = ContentScale.FillBounds,
+                            modifier = GlanceModifier.appWidgetBackground().fillMaxSize(),
+                        )
                         Image(
                             provider = ImageProvider(state.image),
                             contentDescription = null,
-                            contentScale = ContentScale.Crop,
+                            contentScale = ContentScale.Fit,
+                            modifier = GlanceModifier.fillMaxSize(),
                         )
                     } else {
                         CircularProgressIndicator()
@@ -151,6 +175,14 @@ class TgMemesWidget : GlanceAppWidget() {
             }
         }
     }
+
+    private fun blurImage(
+        context: Context,
+        image: Bitmap,
+    ): Bitmap = HokoBlur.with(context)
+        .sampleFactor(2.0f)
+        .radius(15)
+        .blur(image)
 
     private sealed interface WidgetState {
         data object NotConfigured : WidgetState

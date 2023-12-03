@@ -23,6 +23,7 @@ gms-plugin = "4.4.0"
 firebase-bom = "32.5.0"
 crashlytics-plugin = "2.9.9"
 appmetrica = "6.0.0"
+blur = "1.5.3"
 
 [libraries]
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
@@ -60,6 +61,7 @@ firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.r
 firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
 firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics" }
 appmetrica-analytics = { group = "io.appmetrica.analytics", name = "analytics", version.ref = "appmetrica" }
+blur = { group = "io.github.hokofly", name = "hoko-blur", version.ref = "blur" }
 
 
 [plugins]
