@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Tg Channel Widget</string>
+    <string name="app_name">Telegram Channel Widget</string>
     <string name="appwidget_text">EXAMPLE</string>
     <string name="configure">Configure</string>
     <string name="add_widget">Add widget</string>
